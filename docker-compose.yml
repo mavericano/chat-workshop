@@ -59,6 +59,9 @@ services:
       DB_PASSWORD: chat
       GEMINI_API_KEY: ${GEMINI_API_KEY:-PUT_YOUR_GEMINI_API_KEY_HERE}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      MCP_SECRETS_KEY: ${MCP_SECRETS_KEY:-dev-only-change-me}
+      MCP_SECRETS_SALT: ${MCP_SECRETS_SALT:-5f2c8a91d4e7b036}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-}
       AUTH_JWKS_URI: http://auth-service:8081/.well-known/jwks.json
       JWT_ISSUER: room-booking-auth
     ports:

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import Markdown from 'react-markdown';
 import { api } from './api';
-import type { ChatMessage, User } from './types';
+import McpPanel from './McpPanel';
+import type { ChatMessage, McpServer, User } from './types';
 
 const SUGGESTIONS = [
   'How do I book a meeting room?',
@@ -21,6 +22,8 @@ export default function Chat({ user, onSignOut }: Props) {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mcpOpen, setMcpOpen] = useState(false);
+  const [mcpServers, setMcpServers] = useState<McpServer[]>([]);
   const abortRef = useRef<AbortController | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -98,6 +101,7 @@ export default function Chat({ user, onSignOut }: Props) {
   };
 
   const firstName = user.fullName.split(' ')[0];
+  const activeServers = mcpServers.filter((s) => s.enabled).length;
 
   return (
     <div className="chat-app">
@@ -112,6 +116,9 @@ export default function Chat({ user, onSignOut }: Props) {
           </div>
         </div>
         <div className="topbar-actions">
+          <button type="button" className="mcp-button" onClick={() => setMcpOpen(true)} title="Configure MCP servers">
+            🔌 MCP{activeServers > 0 && <span className="badge">{activeServers}</span>}
+          </button>
           <button type="button" onClick={newChat} disabled={busy || messages.length === 0}>
             New chat
           </button>
@@ -171,6 +178,9 @@ export default function Chat({ user, onSignOut }: Props) {
           </button>
         </div>
       </form>
+
+      {mcpOpen && <div className="backdrop" onClick={() => setMcpOpen(false)} />}
+      <McpPanel open={mcpOpen} onClose={() => setMcpOpen(false)} onChange={setMcpServers} />
     </div>
   );
 }

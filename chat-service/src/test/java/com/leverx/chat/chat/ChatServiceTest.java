@@ -1,5 +1,6 @@
 package com.leverx.chat.chat;
 
+import com.leverx.chat.mcp.McpServerService;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -25,7 +26,7 @@ class ChatServiceTest {
 
     @Test
     void rejectsChatWhenApiKeyIsNotConfigured() {
-        var service = new ChatService(mock(ChatClient.class), chatMemory, ChatService.API_KEY_PLACEHOLDER);
+        var service = new ChatService(mock(ChatClient.class), chatMemory, mock(McpServerService.class), ChatService.API_KEY_PLACEHOLDER);
 
         assertThatThrownBy(() -> service.stream(user("1"), "hi", "Europe/Warsaw"))
                 .isInstanceOf(ChatUnavailableException.class)
@@ -34,7 +35,7 @@ class ChatServiceTest {
 
     @Test
     void historyIsPerUserAndHidesSystemMessages() {
-        var service = new ChatService(mock(ChatClient.class), chatMemory, "real-key");
+        var service = new ChatService(mock(ChatClient.class), chatMemory, mock(McpServerService.class), "real-key");
         chatMemory.add("user-1", List.of(new SystemMessage("system"), new UserMessage("hi"), new AssistantMessage("hello")));
         chatMemory.add("user-2", List.of(new UserMessage("other user")));
 

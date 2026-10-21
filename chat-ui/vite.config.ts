@@ -9,6 +9,7 @@ export default defineConfig({
     proxy: {
       '/api/auth': 'http://localhost:8081',
       '/api/chat': 'http://localhost:8082',
+      '/api/mcp': 'http://localhost:8082',
     },
   },
 });

@@ -1,5 +1,5 @@
 import { expireSession, getSession } from './session';
-import type { ChatMessage, Session } from './types';
+import type { ChatMessage, McpServer, McpServerRequest, McpTestResult, Session } from './types';
 
 export class ApiError extends Error {
   constructor(
@@ -94,6 +94,21 @@ export const api = {
   getChatHistory: () => request<ChatMessage[]>('/chat/history'),
 
   clearChatHistory: () => request<void>('/chat/history', { method: 'DELETE' }),
+
+  getMcpServers: () => request<McpServer[]>('/mcp/servers'),
+
+  testMcpServer: (body: McpServerRequest) =>
+    request<McpTestResult>('/mcp/servers/test', { method: 'POST', body: JSON.stringify(body) }),
+
+  addMcpServer: (body: McpServerRequest) =>
+    request<McpServer>('/mcp/servers', { method: 'POST', body: JSON.stringify(body) }),
+
+  setMcpServerEnabled: (id: number, enabled: boolean) =>
+    request<McpServer>(`/mcp/servers/${id}`, { method: 'PATCH', body: JSON.stringify({ enabled }) }),
+
+  reconnectMcpServer: (id: number) => request<McpServer>(`/mcp/servers/${id}/reconnect`, { method: 'POST' }),
+
+  deleteMcpServer: (id: number) => request<void>(`/mcp/servers/${id}`, { method: 'DELETE' }),
 
   streamChat,
 };

@@ -1,5 +1,6 @@
 package com.leverx.chat.chat;
 
+import com.leverx.chat.common.ApiProblemException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -24,6 +25,11 @@ class ApiExceptionHandler extends ResponseEntityExceptionHandler {
                 .map(error -> error.getField() + " " + error.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         return problem(HttpStatus.BAD_REQUEST, detail);
+    }
+
+    @ExceptionHandler(ApiProblemException.class)
+    ResponseEntity<Object> handleApiProblem(ApiProblemException ex) {
+        return problem(ex.getStatus(), ex.getMessage());
     }
 
     @ExceptionHandler(ChatUnavailableException.class)

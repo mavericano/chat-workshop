@@ -47,18 +47,36 @@ Until the key is set, the chat answers with "Gemini API key is not configured". 
 | GET    | `/api/chat/history` | Messages of the current conversation                         |
 | DELETE | `/api/chat/history` | Start a new conversation                                     |
 
-## MCP servers
+## MCP servers in the chat (configured from the chat UI)
 
-From step7, users can connect external MCP servers from the chat UI (🔌 MCP button). The tools they expose are
-offered to the model alongside the conversation. Servers are stored per-user in `chat-db` with encrypted auth headers.
-Only public `https://` servers are allowed unless the host is in `MCP_ALLOWED_HOSTS`.
+Users can connect their own [MCP](https://modelcontextprotocol.io) servers to the assistant: the **🔌 MCP** button in
+the chat UI (http://localhost:3001) opens a panel to add, test, enable/disable, reconnect and remove servers. Tools of
+all enabled servers are offered to Gemini with every chat request. Tool names are prefixed with the server name,
+e.g. `deepwiki__ask_question`.
 
-| Method | Path                    | Description                        |
-|--------|-------------------------|------------------------------------|
-| GET    | `/api/mcp/servers`      | List user's configured MCP servers |
-| POST   | `/api/mcp/servers`      | Add a server                       |
-| PUT    | `/api/mcp/servers/{id}` | Update a server                    |
-| DELETE | `/api/mcp/servers/{id}` | Remove a server                    |
+- **Add:** name, URL (`https://host/path`; without a path `/mcp` is used, `/sse` for the legacy SSE transport),
+  transport (Streamable HTTP or SSE) and an optional auth header such as `Authorization: Bearer …`.
+  *Test connection* connects and lists the tools without saving. Example server without auth:
+  `https://mcp.deepwiki.com/mcp`.
+- **Per user:** servers belong to the user who added them; nobody else sees or uses them.
+- **Storage:** table `mcp_server` in `chat-db` (Flyway migration in `chat-service`). Auth header values are encrypted
+  with AES-256-GCM (`MCP_SECRETS_KEY` / `MCP_SECRETS_SALT` in `.env`) and only shown masked (`Bear…a1b2`).
+- **Connections:** opened on first use, kept open, closed after 30 minutes without use (`mcp.idle-timeout`). Servers
+  that cannot be reached are skipped, so the chat keeps working. Limits: 10 servers per user, 64 tools per request.
+- **SSRF protection:** chat-service connects from inside the Docker network, so only public `https://` URLs are
+  accepted; hosts resolving to private, loopback, link-local or CGNAT addresses are rejected, as are credentials in
+  the URL. Internal servers can be allowed explicitly with `MCP_ALLOWED_HOSTS` (comma separated host names).
+- **stdio servers** (local commands) are intentionally not supported from the UI.
+- The assistant is instructed to ask for confirmation before tools that create, change or delete data.
+
+| Method | Path                                | Description                                       |
+|--------|-------------------------------------|---------------------------------------------------|
+| GET    | `/api/mcp/servers`                  | Servers of the current user with status and tools |
+| POST   | `/api/mcp/servers/test`             | `{name, url, transport, headerName, headerValue}` → connect and list tools, nothing saved |
+| POST   | `/api/mcp/servers`                  | Add a server (same body)                          |
+| PATCH  | `/api/mcp/servers/{id}`             | `{enabled}`                                       |
+| POST   | `/api/mcp/servers/{id}/reconnect`   | Close and reopen the connection                   |
+| DELETE | `/api/mcp/servers/{id}`             | Remove a server                                   |
 
 ## Authentication
 
@@ -97,7 +115,7 @@ Register an account on the first screen of the chat UI. Health endpoints: `/actu
 docker compose up -d auth-db chat-db
 cd auth-service && ./mvnw spring-boot:run            # http://localhost:8081
 cd chat-service && GEMINI_API_KEY=... ./mvnw spring-boot:run   # http://localhost:8082
-cd chat-ui && npm install && npm run dev             # http://localhost:5174, proxies /api/auth to :8081, /api/chat to :8082
+cd chat-ui && npm install && npm run dev             # http://localhost:5174, proxies /api/auth to :8081, /api/chat and /api/mcp to :8082
 ```
 
 Run tests for all Java services with `./mvnw verify` from the repository root (root `pom.xml` aggregates `auth-service`

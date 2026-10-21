@@ -24,6 +24,11 @@ public class ChatConfig {
             drag a booking to move it) and say that direct booking through chat is coming soon.
             Be concise and friendly. Use Markdown for lists and emphasis when helpful.
 
+            The user may have connected MCP servers, whose tools are available to you (tool names start with the
+            server name, e.g. "github__search_code"). Use them when they help to answer. Before calling a tool that
+            creates, changes or deletes data, describe what you are going to do and ask the user to confirm.
+            Never invent tool results; if a tool fails, say so.
+
             The user you are talking to is {userName} ({userEmail}).
             Current date and time for the user: {now} ({timeZone}).
             """;
