@@ -77,6 +77,9 @@ public class McpServerService {
                 hasHeader ? encryptor.encrypt(request.headerValue()) : null);
         server.setEnabled(request.enabled() == null || request.enabled());
         server = repository.saveAndFlush(server);
+        // without the query string: some servers take an API key there
+        log.info("User {} added MCP server {} '{}' ({}, {})", userId, server.getId(), name,
+                server.getUrl().replaceFirst("\\?.*", ""), server.getTransport());
 
         if (server.isEnabled()) {
             registry.toolsOf(server.getId(), spec(server));
@@ -88,6 +91,7 @@ public class McpServerService {
     public McpServerResponse setEnabled(Long userId, Long id, boolean enabled) {
         var server = getOwn(userId, id);
         server.setEnabled(enabled);
+        log.info("User {} {} MCP server {} '{}'", userId, enabled ? "enabled" : "disabled", id, server.getName());
         if (enabled) {
             registry.toolsOf(server.getId(), spec(server));
         } else {
@@ -98,6 +102,7 @@ public class McpServerService {
 
     public McpServerResponse reconnect(Long userId, Long id) {
         var server = getOwn(userId, id);
+        log.info("User {} reconnects MCP server {} '{}'", userId, id, server.getName());
         registry.disconnect(server.getId());
         if (server.isEnabled()) {
             registry.toolsOf(server.getId(), spec(server));
@@ -110,6 +115,7 @@ public class McpServerService {
         var server = getOwn(userId, id);
         registry.disconnect(server.getId());
         repository.delete(server);
+        log.info("User {} removed MCP server {} '{}'", userId, id, server.getName());
     }
 
     /**

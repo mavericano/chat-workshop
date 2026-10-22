@@ -2,6 +2,7 @@ package com.leverx.chat.config;
 
 import com.google.genai.Client;
 import com.google.genai.types.HttpOptions;
+import com.leverx.chat.chat.ChatLoggingAdvisor;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
@@ -54,11 +55,15 @@ public class ChatConfig {
                 .build();
     }
 
+    /**
+     * Advisors run by their order, not by their position here: memory first, then Spring AI's tool-calling loop,
+     * then the logging advisor, which therefore sees every single call to the model.
+     */
     @Bean
     ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
         return builder
                 .defaultSystem(SYSTEM_PROMPT)
-                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build(), new ChatLoggingAdvisor())
                 .build();
     }
 }

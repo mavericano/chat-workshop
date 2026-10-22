@@ -24,6 +24,7 @@ import java.net.ConnectException;
 import java.net.http.HttpTimeoutException;
 import java.nio.channels.UnresolvedAddressException;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -105,6 +106,7 @@ public class McpClientRegistry implements DisposableBean {
         errors.remove(serverId);
         var connection = connections.remove(serverId);
         if (connection != null) {
+            log.info("Disconnected MCP server {} ({})", serverId, connection.serverInfo());
             close(connection);
         }
     }
@@ -138,7 +140,7 @@ public class McpClientRegistry implements DisposableBean {
         var threshold = Instant.now().minus(properties.idleTimeout());
         connections.forEach((id, connection) -> {
             if (connection.lastUsed()[0].isBefore(threshold) && connections.remove(id, connection)) {
-                log.debug("Closing idle MCP connection {}", id);
+                log.info("Closing idle MCP connection {} ({})", id, connection.serverInfo());
                 close(connection);
             }
         });
@@ -151,6 +153,7 @@ public class McpClientRegistry implements DisposableBean {
     }
 
     private Connection open(ConnectionSpec spec) {
+        var startNanos = System.nanoTime();
         var client = McpClient.sync(transport(spec))
                 .clientInfo(new McpSchema.Implementation("room-booking-chat", "1.0.0"))
                 .requestTimeout(properties.requestTimeout())
@@ -161,13 +164,19 @@ public class McpClientRegistry implements DisposableBean {
             var tools = client.listTools().tools().stream()
                     .map(tool -> new McpToolInfo(tool.name(), tool.description()))
                     .toList();
-            var callbacks = List.of(SyncMcpToolCallbackProvider.builder()
-                    .mcpClients(client)
-                    .toolNamePrefixGenerator((info, tool) -> toolName(spec.name(), tool.name()))
-                    .build()
-                    .getToolCallbacks());
+            var callbacks = Arrays.stream(SyncMcpToolCallbackProvider.builder()
+                            .mcpClients(client)
+                            .toolNamePrefixGenerator((info, tool) -> toolName(spec.name(), tool.name()))
+                            .build()
+                            .getToolCallbacks())
+                    .<ToolCallback>map(callback -> new LoggingToolCallback(callback, spec.name(),
+                            callback.getToolDefinition().name()))
+                    .toList();
             var server = initialized.serverInfo();
             var serverInfo = server == null ? null : server.name() + " " + server.version();
+            log.info("Connected to MCP server '{}' ({}, {}) in {} ms: {} tools {}", spec.name(), serverInfo,
+                    spec.target().baseUrl(), (System.nanoTime() - startNanos) / 1_000_000, tools.size(),
+                    tools.stream().map(McpToolInfo::name).toList());
             return new Connection(client, serverInfo, tools, callbacks, new Instant[]{Instant.now()});
         } catch (RuntimeException e) {
             client.closeGracefully();
